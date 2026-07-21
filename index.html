@@ -1,17 +1,22 @@
-<!DOCTYPE html>
+html_content = """<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="theme-color" content="#FFF8F0">
     <title>🍜 Dish Detective with Curious Bear</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+        html { -webkit-text-size-adjust: 100%; }
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: #FFF8F0;
             min-height: 100vh;
             padding: 10px;
             touch-action: manipulation;
+            -webkit-font-smoothing: antialiased;
         }
         #game-container {
             max-width: 900px;
@@ -119,9 +124,6 @@
             background: #D5F5E3 !important;
             border: 2px solid #27AE60 !important;
         }
-        .slot.wrong {
-            animation: shake 0.5s;
-        }
         #dish-status {
             margin-top: 10px;
             font-size: 24px;
@@ -158,6 +160,7 @@
             transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s, opacity 0.3s;
             user-select: none;
             -webkit-user-select: none;
+            -webkit-touch-callout: none;
         }
         .ingredient-item:active {
             transform: scale(0.95);
@@ -247,6 +250,7 @@
             font-weight: bold;
             width: 100%;
             max-width: 200px;
+            -webkit-appearance: none;
         }
         .btn:hover { background: #D35400; }
         #win-screen {
@@ -301,6 +305,14 @@
             from { opacity: 0; }
             to { opacity: 1; }
         }
+        @keyframes slotPop {
+            0% { transform: scale(0.8); opacity: 0; }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .slot-pop {
+            animation: slotPop 0.4s ease;
+        }
         @media (max-width: 400px) {
             h1 { font-size: 18px; }
             .bear-avatar { width: 50px; height: 50px; }
@@ -346,7 +358,7 @@
         </div>
     </div>
 
-    <p class="instructions">👆 Tap an ingredient to add it to the dish!</p>
+    <p class="instructions">👆 Tap an ingredient to auto-add it to the dish!</p>
 
     <div class="pantry-container">
         <h3 class="pantry-title">🥘 Pick 4 out of 5 ingredients!</h3>
@@ -512,7 +524,7 @@ function loadDish(index) {
     slot.innerHTML = '<span style="color:#bbb;font-size:11px">?</span>';
     slot.style.background = '#f8f8f8';
     slot.style.border = '2px dashed #ccc';
-    slot.classList.remove('correct', 'wrong');
+    slot.classList.remove('correct', 'slot-pop');
     slot.dataset.filled = 'false';
   });
 
@@ -548,7 +560,6 @@ function loadDish(index) {
 }
 
 function handleIngredientClick(el) {
-  // Ignore if already used
   if (el.classList.contains('used')) return;
 
   const ingredientName = el.dataset.name;
@@ -556,9 +567,8 @@ function handleIngredientClick(el) {
   const belongsToCurrent = dish.ingredients.includes(ingredientName);
 
   if (belongsToCurrent && !currentDishCorrect.includes(ingredientName)) {
-    // Correct!
     const slot = getEmptySlot();
-    if (!slot) return; // All slots full (shouldn't happen)
+    if (!slot) return;
 
     currentDishCorrect.push(ingredientName);
 
@@ -566,7 +576,7 @@ function handleIngredientClick(el) {
       <img src="${dish.images[ingredientName]}" style="width:55px;height:45px;object-fit:cover;border-radius:5px;margin-bottom:2px;" onerror="this.style.display='none'">
       <div style="font-size:10px;color:#27AE60;font-weight:bold;">${ingredientName}</div>
     `;
-    slot.classList.add('correct');
+    slot.classList.add('correct', 'slot-pop');
     slot.dataset.filled = 'true';
 
     el.classList.add('used');
@@ -586,7 +596,6 @@ function handleIngredientClick(el) {
       }, 500);
     }
   } else {
-    // Wrong!
     showMessage("Oops! That's not right! 😅", "#E74C3C");
     setBearMessage('wrong');
 
@@ -649,9 +658,13 @@ function resetGame() {
   initGame();
 }
 
-// Initialize
 initGame();
 </script>
 
 </body>
-</html>
+</html>"""
+
+with open('/mnt/agents/output/index.html', 'w') as f:
+    f.write(html_content)
+
+print("File saved to /mnt/agents/output/index.html")
