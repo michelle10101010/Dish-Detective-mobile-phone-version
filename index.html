@@ -548,6 +548,7 @@ function loadDish(index) {
 }
 
 function handleIngredientClick(el) {
+  // Ignore if already used
   if (el.classList.contains('used')) return;
 
   const ingredientName = el.dataset.name;
@@ -555,8 +556,9 @@ function handleIngredientClick(el) {
   const belongsToCurrent = dish.ingredients.includes(ingredientName);
 
   if (belongsToCurrent && !currentDishCorrect.includes(ingredientName)) {
+    // Correct!
     const slot = getEmptySlot();
-    if (!slot) return;
+    if (!slot) return; // All slots full (shouldn't happen)
 
     currentDishCorrect.push(ingredientName);
 
@@ -584,6 +586,7 @@ function handleIngredientClick(el) {
       }, 500);
     }
   } else {
+    // Wrong!
     showMessage("Oops! That's not right! 😅", "#E74C3C");
     setBearMessage('wrong');
 
@@ -646,6 +649,7 @@ function resetGame() {
   initGame();
 }
 
+// Initialize
 initGame();
 </script>
 
