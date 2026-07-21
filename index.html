@@ -113,12 +113,7 @@
             justify-content: center;
             border: 2px dashed #ccc;
             transition: all 0.3s;
-            cursor: pointer;
-        }
-        .slot.highlight {
-            border-color: #E67E22 !important;
-            background: #FFF3E0 !important;
-            transform: scale(1.02);
+            cursor: default;
         }
         .slot.correct {
             background: #D5F5E3 !important;
@@ -160,21 +155,21 @@
             cursor: pointer;
             box-shadow: 0 2px 6px rgba(0,0,0,0.1);
             border: 2px solid #F39C12;
-            transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+            transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s, opacity 0.3s;
             user-select: none;
             -webkit-user-select: none;
         }
         .ingredient-item:active {
             transform: scale(0.95);
         }
-        .ingredient-item.selected {
-            border-color: #E67E22;
-            box-shadow: 0 0 0 3px rgba(230, 126, 34, 0.3);
-            transform: scale(1.05);
-        }
         .ingredient-item.used {
-            opacity: 0.4;
+            opacity: 0.3;
             pointer-events: none;
+            border-color: #ccc;
+        }
+        .ingredient-item.wrong-tap {
+            animation: shake 0.4s;
+            border-color: #E74C3C;
         }
         .ingredient-item img {
             width: 60px;
@@ -315,7 +310,6 @@
             #dish-emoji { font-size: 40px; }
         }
     </style>
-<base target="_blank">
 </head>
 <body>
 
@@ -333,7 +327,7 @@
 
     <div id="bear-speech">
         <div class="speech-bubble">
-            <span id="bear-message">Hi friend! Tap an ingredient, then tap a slot to place it! 🐻</span>
+            <span id="bear-message">Hi friend! Tap an ingredient to add it to the dish! 🐻</span>
         </div>
     </div>
 
@@ -352,7 +346,7 @@
         </div>
     </div>
 
-    <p class="instructions">👆 Tap an ingredient, then tap a slot to place it!</p>
+    <p class="instructions">👆 Tap an ingredient to add it to the dish!</p>
 
     <div class="pantry-container">
         <h3 class="pantry-title">🥘 Pick 4 out of 5 ingredients!</h3>
@@ -452,7 +446,7 @@ const decoyPool = [
 ];
 
 const bearMessages = {
-  start: "Hi friend! Tap an ingredient, then tap a slot to place it! 🐻",
+  start: "Hi friend! Tap an ingredient to add it to the dish! 🐻",
   correct: "Yay! That's the right ingredient! Keep going! 🎉",
   wrong: "Oops! That one doesn't belong here! Try again! 🤔",
   complete: "Amazing! We solved this dish! Ready for the next one? 🌟",
@@ -461,7 +455,6 @@ const bearMessages = {
 
 let currentDishIndex = 0;
 let currentDishCorrect = [];
-let selectedIngredient = null;
 
 function shuffle(array) {
   const arr = [...array];
@@ -479,10 +472,19 @@ function setBearMessage(key) {
   setTimeout(() => { msgEl.parentElement.style.animation = ''; }, 400);
 }
 
+function getEmptySlot() {
+  const slots = document.querySelectorAll('.slot');
+  for (let slot of slots) {
+    if (slot.dataset.filled !== 'true') {
+      return slot;
+    }
+  }
+  return null;
+}
+
 function initGame() {
   currentDishIndex = 0;
   currentDishCorrect = [];
-  selectedIngredient = null;
   document.getElementById('win-screen').style.display = 'none';
   document.getElementById('dish-area').style.display = 'flex';
   document.querySelector('.pantry-container').style.display = 'block';
@@ -496,7 +498,6 @@ function initGame() {
 function loadDish(index) {
   currentDishIndex = index;
   currentDishCorrect = [];
-  selectedIngredient = null;
   const dish = dishes[index];
 
   document.getElementById('score-board').textContent = `⭐ Dish ${index + 1} of 5`;
@@ -511,7 +512,7 @@ function loadDish(index) {
     slot.innerHTML = '<span style="color:#bbb;font-size:11px">?</span>';
     slot.style.background = '#f8f8f8';
     slot.style.border = '2px dashed #ccc';
-    slot.classList.remove('correct', 'highlight');
+    slot.classList.remove('correct', 'wrong');
     slot.dataset.filled = 'false';
   });
 
@@ -538,107 +539,61 @@ function loadDish(index) {
     itemEl.dataset.name = item.name;
     itemEl.dataset.correct = item.correct;
     itemEl.innerHTML = `
-      <img src="${item.image}" alt="${item.name}" onerror="this.style.display='none'">
+      <img src="${item.image}" alt="${item.name}" onerror="this.style.display='none'; this.nextElementSibling.style.marginTop='20px';">
       <div class="ingredient-name">${item.name}</div>
     `;
-    itemEl.addEventListener('click', () => selectIngredient(itemEl));
+    itemEl.addEventListener('click', () => handleIngredientClick(itemEl));
     pantry.appendChild(itemEl);
   });
 }
 
-function selectIngredient(el) {
-  // Deselect previous
-  document.querySelectorAll('.ingredient-item').forEach(item => item.classList.remove('selected'));
+function handleIngredientClick(el) {
+  if (el.classList.contains('used')) return;
 
-  // If clicking same item, deselect it
-  if (selectedIngredient === el) {
-    selectedIngredient = null;
-    clearSlotHighlights();
-    return;
-  }
+  const ingredientName = el.dataset.name;
+  const dish = dishes[currentDishIndex];
+  const belongsToCurrent = dish.ingredients.includes(ingredientName);
 
-  // Select new
-  selectedIngredient = el;
-  el.classList.add('selected');
+  if (belongsToCurrent && !currentDishCorrect.includes(ingredientName)) {
+    const slot = getEmptySlot();
+    if (!slot) return;
 
-  // Highlight empty slots
-  highlightEmptySlots();
+    currentDishCorrect.push(ingredientName);
 
-  // Also allow direct slot click
-  setupSlotClick();
-}
+    slot.innerHTML = `
+      <img src="${dish.images[ingredientName]}" style="width:55px;height:45px;object-fit:cover;border-radius:5px;margin-bottom:2px;" onerror="this.style.display='none'">
+      <div style="font-size:10px;color:#27AE60;font-weight:bold;">${ingredientName}</div>
+    `;
+    slot.classList.add('correct');
+    slot.dataset.filled = 'true';
 
-function highlightEmptySlots() {
-  document.querySelectorAll('.slot').forEach(slot => {
-    if (slot.dataset.filled !== 'true') {
-      slot.classList.add('highlight');
+    el.classList.add('used');
+
+    showMessage("Correct! 🎉", "#27AE60");
+    setBearMessage('correct');
+
+    if (currentDishCorrect.length === 4) {
+      const dishCard = document.getElementById('current-dish');
+      dishCard.style.border = `3px solid ${dish.color}`;
+      dishCard.style.background = '#F0FFF4';
+      document.getElementById('dish-status').textContent = '✅';
+
+      setTimeout(() => {
+        setBearMessage('complete');
+        showFact(dish);
+      }, 500);
     }
-  });
-}
+  } else {
+    showMessage("Oops! That's not right! 😅", "#E74C3C");
+    setBearMessage('wrong');
 
-function clearSlotHighlights() {
-  document.querySelectorAll('.slot').forEach(slot => slot.classList.remove('highlight'));
-}
+    el.classList.add('wrong-tap');
+    setTimeout(() => el.classList.remove('wrong-tap'), 400);
 
-function setupSlotClick() {
-  document.querySelectorAll('.slot').forEach(slot => {
-    // Remove old listeners to prevent duplicates
-    const newSlot = slot.cloneNode(true);
-    slot.parentNode.replaceChild(newSlot, slot);
-
-    newSlot.addEventListener('click', function() {
-      if (this.dataset.filled === 'true' || !selectedIngredient) return;
-
-      const ingredientName = selectedIngredient.dataset.name;
-      const dish = dishes[currentDishIndex];
-      const belongsToCurrent = dish.ingredients.includes(ingredientName);
-
-      if (belongsToCurrent && !currentDishCorrect.includes(ingredientName)) {
-        // Correct!
-        currentDishCorrect.push(ingredientName);
-
-        this.innerHTML = `
-          <img src="${dish.images[ingredientName]}" style="width:55px;height:45px;object-fit:cover;border-radius:5px;margin-bottom:2px;" onerror="this.style.display='none'">
-          <div style="font-size:10px;color:#27AE60;font-weight:bold;">${ingredientName}</div>
-        `;
-        this.classList.add('correct');
-        this.classList.remove('highlight');
-        this.dataset.filled = 'true';
-
-        selectedIngredient.classList.add('used');
-        selectedIngredient.classList.remove('selected');
-        selectedIngredient = null;
-        clearSlotHighlights();
-
-        showMessage("Correct! 🎉", "#27AE60");
-        setBearMessage('correct');
-
-        if (currentDishCorrect.length === 4) {
-          const dishCard = document.getElementById('current-dish');
-          dishCard.style.border = `3px solid ${dish.color}`;
-          dishCard.style.background = '#F0FFF4';
-          document.getElementById('dish-status').textContent = '✅';
-
-          setTimeout(() => {
-            setBearMessage('complete');
-            showFact(dish);
-          }, 500);
-        }
-      } else {
-        // Wrong!
-        showMessage("Oops! That's not right! 😅", "#E74C3C");
-        setBearMessage('wrong');
-
-        const dishCard = document.getElementById('current-dish');
-        dishCard.style.animation = 'shake 0.5s';
-        setTimeout(() => { dishCard.style.animation = ''; }, 500);
-
-        selectedIngredient.classList.remove('selected');
-        selectedIngredient = null;
-        clearSlotHighlights();
-      }
-    });
-  });
+    const dishCard = document.getElementById('current-dish');
+    dishCard.style.animation = 'shake 0.5s';
+    setTimeout(() => { dishCard.style.animation = ''; }, 500);
+  }
 }
 
 function showMessage(text, color) {
@@ -691,7 +646,6 @@ function resetGame() {
   initGame();
 }
 
-// Initialize
 initGame();
 </script>
 
