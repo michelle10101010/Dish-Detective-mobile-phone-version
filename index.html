@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>🍜 Dish Detective with Curious Bear</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #FFF8F0;
+            min-height: 100vh;
+            padding: 10px;
+            touch-action: manipulation;
+        }
+        #game-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 10px;
+            background: #FFF8F0;
+            border-radius: 20px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .header-inner {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .bear-avatar {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 50%;
+            border: 3px solid #E67E22;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        h1 { color: #E67E22; font-size: 22px; margin: 0; }
+        .subtitle { color: #7F8C8D; font-size: 12px; margin: 2px 0 0 0; }
+        #score-board {
+            margin-top: 8px;
+            font-size: 14px;
+            color: #2C3E50;
+            font-weight: bold;
+        }
+        #bear-speech {
+            text-align: center;
+            margin-bottom: 10px;
+            min-height: 40px;
+        }
+        .speech-bubble {
+            display: inline-block;
+            background: #FFF3E0;
+            border-radius: 15px;
+            padding: 8px 16px;
+            position: relative;
+            max-width: 90%;
+        }
+        .speech-bubble::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+            border-top: 8px solid #FFF3E0;
+        }
+        #bear-message {
+            color: #8B4513;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        #dish-area {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 15px;
+        }
+        #current-dish {
+            background: white;
+            border-radius: 20px;
+            padding: 15px;
+            width: 100%;
+            max-width: 320px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            border: 3px dashed #ddd;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+        #dish-emoji { font-size: 48px; margin-bottom: 6px; }
+        #dish-name { font-weight: bold; font-size: 18px; margin-bottom: 3px; }
+        #dish-origin { color: #7F8C8D; font-size: 12px; margin-bottom: 10px; }
+        #ingredient-slots {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            min-height: 160px;
+        }
+        .slot {
+            background: #f8f8f8;
+            border-radius: 10px;
+            padding: 8px;
+            min-height: 70px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border: 2px dashed #ccc;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        .slot.highlight {
+            border-color: #E67E22 !important;
+            background: #FFF3E0 !important;
+            transform: scale(1.02);
+        }
+        .slot.correct {
+            background: #D5F5E3 !important;
+            border: 2px solid #27AE60 !important;
+        }
+        .slot.wrong {
+            animation: shake 0.5s;
+        }
+        #dish-status {
+            margin-top: 10px;
+            font-size: 24px;
+            min-height: 30px;
+        }
+        .pantry-container {
+            background: #FDF2E9;
+            border-radius: 15px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        .pantry-title {
+            text-align: center;
+            color: #D35400;
+            margin: 0 0 8px 0;
+            font-size: 14px;
+        }
+        #pantry {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            min-height: 80px;
+        }
+        .ingredient-item {
+            background: white;
+            border-radius: 10px;
+            padding: 5px;
+            width: 80px;
+            text-align: center;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+            border: 2px solid #F39C12;
+            transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .ingredient-item:active {
+            transform: scale(0.95);
+        }
+        .ingredient-item.selected {
+            border-color: #E67E22;
+            box-shadow: 0 0 0 3px rgba(230, 126, 34, 0.3);
+            transform: scale(1.05);
+        }
+        .ingredient-item.used {
+            opacity: 0.4;
+            pointer-events: none;
+        }
+        .ingredient-item img {
+            width: 60px;
+            height: 48px;
+            object-fit: cover;
+            border-radius: 6px;
+            margin-bottom: 3px;
+            pointer-events: none;
+        }
+        .ingredient-name {
+            font-size: 9px;
+            color: #2C3E50;
+            font-weight: 600;
+            line-height: 1.2;
+            pointer-events: none;
+        }
+        #message-area {
+            text-align: center;
+            min-height: 30px;
+            font-size: 14px;
+            font-weight: bold;
+            color: #27AE60;
+        }
+        #fact-popup {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            z-index: 100;
+            max-width: 90%;
+            width: 350px;
+            text-align: center;
+        }
+        #overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.4);
+            z-index: 99;
+        }
+        .popup-header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .popup-bear {
+            width: 50px;
+            height: 50px;
+            object-fit: cover;
+            border-radius: 50%;
+            border: 2px solid #E67E22;
+        }
+        #fact-emoji { font-size: 36px; }
+        #fact-title { color: #E67E22; margin: 0 0 8px 0; font-size: 16px; }
+        #fact-text { color: #2C3E50; font-size: 14px; line-height: 1.5; }
+        .btn {
+            margin-top: 12px;
+            padding: 10px 25px;
+            background: #E67E22;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            font-size: 14px;
+            cursor: pointer;
+            font-weight: bold;
+            width: 100%;
+            max-width: 200px;
+        }
+        .btn:hover { background: #D35400; }
+        #win-screen {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        .win-bear {
+            width: 100px;
+            height: 100px;
+            object-fit: cover;
+            border-radius: 50%;
+            border: 4px solid #E67E22;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+            margin-bottom: 15px;
+        }
+        .win-title { color: #E67E22; font-size: 22px; margin: 0; }
+        .win-subtitle { color: #7F8C8D; font-size: 14px; margin: 8px 0; }
+        .win-quote {
+            background: #FFF3E0;
+            border-radius: 15px;
+            padding: 12px;
+            margin: 12px auto;
+            max-width: 300px;
+        }
+        .win-quote p {
+            color: #8B4513;
+            font-size: 13px;
+            margin: 0;
+            font-style: italic;
+        }
+        .btn-green {
+            background: #27AE60;
+        }
+        .btn-green:hover { background: #1E8449; }
+        .instructions {
+            text-align: center;
+            color: #999;
+            font-size: 12px;
+            margin-bottom: 8px;
+        }
+        @keyframes popIn {
+            0% { transform: scale(0.9); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-8px); }
+            75% { transform: translateX(8px); }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @media (max-width: 400px) {
+            h1 { font-size: 18px; }
+            .bear-avatar { width: 50px; height: 50px; }
+            .ingredient-item { width: 70px; }
+            .ingredient-item img { width: 55px; height: 42px; }
+            #current-dish { padding: 12px; }
+            #dish-emoji { font-size: 40px; }
+        }
+    </style>
+<base target="_blank">
+</head>
+<body>
+
+<div id="game-container">
+    <div class="header">
+        <div class="header-inner">
+            <img class="bear-avatar" src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABALDA4MChAODQ4SERATGCgaGBYWGDEjJR0oOjM9PDkzODdASFxOQERXRTc4UG1RV19iZ2hnPk1xeXBkeFxlZ2P/2wBDARESEhgVGC8aGi9jQjhCY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2P/wAARCABQAFADASIAAhEBAxEB/8QAGgAAAQUBAAAAAAAAAAAAAAAAAAEDBAUGAv/EAC8QAAIBAwIEBAUEAwAAAAAAAAECAwAEERIhBTFRYRNBcYEVIjKRsTNCocEjUvH/xAAYAQADAQEAAAAAAAAAAAAAAAAAAQMEAv/EAB8RAAICAgIDAQAAAAAAAAAAAAABAhEDIRIxMkFRE//aAAwDAQACEQMRAD8A21FFFZyoUUUUAFFFMXQxFr8UxKu7sOenoKAH6Ki2RlPiFi5iyPDMn1Yrm9IV0L3EqKRhY4h8zHrSvVhZMoqPZNMbVDcAiQ5588eWe9SKYBSEhQSTgAZJpag8Q4lbWSlZfnYj6B069KAKy74w5w/itEjfSqDfHc0/acVkTacPLGRlWAGoHoeVUguG2ZbclFPyEgkgeW+KfguUn2BIbng1BuS2aFGLVFzJxnAHhWzE531MBt7Zp34hbXEJWR2g1bfMB+eX3qnxS5xS/Rg8SNFJcQxIHklRVPIk8/TrXEbxXEwmimVwgI0jBwT59RWeK4BMeFfGxPIUlnNMjxyFcTCQKMfuyQCPz+a7WS2cPFo1ON80tFFVJhWV4eyXM895cr4jeIAFPlkEn8Aema1VZniNhPw2eS6tl12rHW6/6+vbc4Pek+tAqvYzxbiYttDSIHZzhV5AColy6FYbuIYLjVjuCP8Aldz39pcqBLbh8bhSQQDUmzt5b6ZLloQsEONES7aiN8b/AH358qklXZZv4OEEHcEetJTtjw1IL6WXXdsHY4jkGVwfMn1z3rm+tlFyMO6BcEYbb361NqiilZxy3qZwkIb8l1DNoJQn9pB3x7GoroFxhgc1K4Qha+LDkkZz7kAfg04eQsniy7ooorSZjmVxFE8jfSilj7VnbueW6VvHclSP0wxCjttzrQzRiaF4mOA6lSfWslfwXEMqxyyGHGxPk3cGp5L9FMdexuzjZUmZQCiZc5O+MkbHz5VPt70wNz055hxio0TqY5EjxhsJt5KN/wCc4p2IIMpI50gZUE4HcVntts7m3FWif8Tyuyrn1qFNOGcvI4yeppvRAoxEqyN6ZUe9dWlujXq+IqAKpbAXAzkD+6JOlbFCTfSONTPgRrkE41HZR71d8IMMMfg7iZvmZjyc9j0HSqZnS8y74ZSSAM7AdKkR3BEYLN/kiI0kn6vMH+MURnKLTO5rkjRUUtJWwzBQVVxpYAg+RGaWigRlCQ8juqhQ7scAYxvTqoDsRmrM8HQDCSkDuKQcKYcpV+1Z3CVmlTjRAKACodyMPGzDKAnVV4eFuR+qv2NcNwhmGDKv2NLhL4HOP0qjNGFzrQDsRUi1jzHNNIuAVwMjfAyf7qR8ABBzKoz5haso7GBCDpZsHI1sTv6UnilLQnkQ7CGEEYb6goz64ruilrUQP//Z" alt="Curious Bear">
+            <div>
+                <h1>🍜 Dish Detective</h1>
+                <p class="subtitle">With Curious Bear 🐻🔍</p>
+            </div>
+        </div>
+        <div id="score-board">⭐ Dish 1 of 5</div>
+    </div>
+
+    <div id="bear-speech">
+        <div class="speech-bubble">
+            <span id="bear-message">Hi friend! Tap an ingredient, then tap a slot to place it! 🐻</span>
+        </div>
+    </div>
+
+    <div id="dish-area">
+        <div id="current-dish">
+            <div id="dish-emoji"></div>
+            <div id="dish-name"></div>
+            <div id="dish-origin"></div>
+            <div id="ingredient-slots">
+                <div class="slot" data-slot="0"><span style="color:#bbb;font-size:11px">?</span></div>
+                <div class="slot" data-slot="1"><span style="color:#bbb;font-size:11px">?</span></div>
+                <div class="slot" data-slot="2"><span style="color:#bbb;font-size:11px">?</span></div>
+                <div class="slot" data-slot="3"><span style="color:#bbb;font-size:11px">?</span></div>
+            </div>
+            <div id="dish-status"></div>
+        </div>
+    </div>
+
+    <p class="instructions">👆 Tap an ingredient, then tap a slot to place it!</p>
+
+    <div class="pantry-container">
+        <h3 class="pantry-title">🥘 Pick 4 out of 5 ingredients!</h3>
+        <div id="pantry"></div>
+    </div>
+
+    <div id="message-area"></div>
+
+    <div id="fact-popup">
+        <div class="popup-header">
+            <img class="popup-bear" src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABALDA4MChAODQ4SERATGCgaGBYWGDEjJR0oOjM9PDkzODdASFxOQERXRTc4UG1RV19iZ2hnPk1xeXBkeFxlZ2P/2wBDARESEhgVGC8aGi9jQjhCY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2P/wAARCABQAFADASIAAhEBAxEB/8QAGgAAAQUBAAAAAAAAAAAAAAAAAAEDBAUGAv/EAC8QAAIBAwIEBAUEAwAAAAAAAAECAwAEERIhBTFRYRNBcYEVIjKRsTNCocEjUvH/xAAYAQADAQEAAAAAAAAAAAAAAAAAAQMEAv/EAB8RAAICAgIDAQAAAAAAAAAAAAABAhEDIRIxMkFRE//aAAwDAQACEQMRAD8A21FFFZyoUUUUAFFFMXQxFr8UxKu7sOenoKAH6Ki2RlPiFi5iyPDMn1Yrm9IV0L3EqKRhY4h8zHrSvVhZMoqPZNMbVDcAiQ5588eWe9SKYBSEhQSTgAZJpag8Q4lbWSlZfnYj6B069KAKy74w5w/itEjfSqDfHc0/acVkTacPLGRlWAGoHoeVUguG2ZbclFPyEgkgeW+KfguUn2BIbng1BuS2aFGLVFzJxnAHhWzE531MBt7Zp34hbXEJWR2g1bfMB+eX3qnxS5xS/Rg8SNFJcQxIHklRVPIk8/TrXEbxXEwmimVwgI0jBwT59RWeK4BMeFfGxPIUlnNMjxyFcTCQKMfuyQCPz+a7WS2cPFo1ON80tFFVJhWV4eyXM895cr4jeIAFPlkEn8Aema1VZniNhPw2eS6tl12rHW6/6+vbc4Pek+tAqvYzxbiYttDSIHZzhV5AColy6FYbuIYLjVjuCP8Aldz39pcqBLbh8bhSQQDUmzt5b6ZLloQsEONES7aiN8b/AH358qklXZZv4OEEHcEetJTtjw1IL6WXXdsHY4jkGVwfMn1z3rm+tlFyMO6BcEYbb361NqiilZxy3qZwkIb8l1DNoJQn9pB3x7GoroFxhgc1K4Qha+LDkkZz7kAfg04eQsniy7ooorSZjmVxFE8jfSilj7VnbueW6VvHclSP0wxCjttzrQzRiaF4mOA6lSfWslfwXEMqxyyGHGxPk3cGp5L9FMdexuzjZUmZQCiZc5O+MkbHz5VPt70wNz055hxio0TqY5EjxhsJt5KN/wCc4p2IIMpI50gZUE4HcVntts7m3FWif8Tyuyrn1qFNOGcvI4yeppvRAoxEqyN6ZUe9dWlujXq+IqAKpbAXAzkD+6JOlbFCTfSONTPgRrkE41HZR71d8IMMMfg7iZvmZjyc9j0HSqZnS8y74ZSSAM7AdKkR3BEYLN/kiI0kn6vMH+MURnKLTO5rkjRUUtJWwzBQVVxpYAg+RGaWigRlCQ8juqhQ7scAYxvTqoDsRmrM8HQDCSkDuKQcKYcpV+1Z3CVmlTjRAKACodyMPGzDKAnVV4eFuR+qv2NcNwhmGDKv2NLhL4HOP0qjNGFzrQDsRUi1jzHNNIuAVwMjfAyf7qR8ABBzKoz5haso7GBCDpZsHI1sTv6UnilLQnkQ7CGEEYb6goz64ruilrUQP//Z" alt="Curious Bear">
+            <div id="fact-emoji"></div>
+        </div>
+        <h3 id="fact-title"></h3>
+        <p id="fact-text"></p>
+        <button class="btn" id="next-btn">Next Dish! 🍴</button>
+    </div>
+
+    <div id="overlay"></div>
+
+    <div id="win-screen">
+        <img class="win-bear" src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABALDA4MChAODQ4SERATGCgaGBYWGDEjJR0oOjM9PDkzODdASFxOQERXRTc4UG1RV19iZ2hnPk1xeXBkeFxlZ2P/2wBDARESEhgVGC8aGi9jQjhCY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2P/wAARCABQAFADASIAAhEBAxEB/8QAGgAAAQUBAAAAAAAAAAAAAAAAAAEDBAUGAv/EAC8QAAIBAwIEBAUEAwAAAAAAAAECAwAEERIhBTFRYRNBcYEVIjKRsTNCocEjUvH/xAAYAQADAQEAAAAAAAAAAAAAAAAAAQMEAv/EAB8RAAICAgIDAQAAAAAAAAAAAAABAhEDIRIxMkFRE//aAAwDAQACEQMRAD8A21FFFZyoUUUUAFFFMXQxFr8UxKu7sOenoKAH6Ki2RlPiFi5iyPDMn1Yrm9IV0L3EqKRhY4h8zHrSvVhZMoqPZNMbVDcAiQ5588eWe9SKYBSEhQSTgAZJpag8Q4lbWSlZfnYj6B069KAKy74w5w/itEjfSqDfHc0/acVkTacPLGRlWAGoHoeVUguG2ZbclFPyEgkgeW+KfguUn2BIbng1BuS2aFGLVFzJxnAHhWzE531MBt7Zp34hbXEJWR2g1bfMB+eX3qnxS5xS/Rg8SNFJcQxIHklRVPIk8/TrXEbxXEwmimVwgI0jBwT59RWeK4BMeFfGxPIUlnNMjxyFcTCQKMfuyQCPz+a7WS2cPFo1ON80tFFVJhWV4eyXM895cr4jeIAFPlkEn8Aema1VZniNhPw2eS6tl12rHW6/6+vbc4Pek+tAqvYzxbiYttDSIHZzhV5AColy6FYbuIYLjVjuCP8Aldz39pcqBLbh8bhSQQDUmzt5b6ZLloQsEONES7aiN8b/AH358qklXZZv4OEEHcEetJTtjw1IL6WXXdsHY4jkGVwfMn1z3rm+tlFyMO6BcEYbb361NqiilZxy3qZwkIb8l1DNoJQn9pB3x7GoroFxhgc1K4Qha+LDkkZz7kAfg04eQsniy7ooorSZjmVxFE8jfSilj7VnbueW6VvHclSP0wxCjttzrQzRiaF4mOA6lSfWslfwXEMqxyyGHGxPk3cGp5L9FMdexuzjZUmZQCiZc5O+MkbHz5VPt70wNz055hxio0TqY5EjxhsJt5KN/wCc4p2IIMpI50gZUE4HcVntts7m3FWif8Tyuyrn1qFNOGcvI4yeppvRAoxEqyN6ZUe9dWlujXq+IqAKpbAXAzkD+6JOlbFCTfSONTPgRrkE41HZR71d8IMMMfg7iZvmZjyc9j0HSqZnS8y74ZSSAM7AdKkR3BEYLN/kiI0kn6vMH+MURnKLTO5rkjRUUtJWwzBQVVxpYAg+RGaWigRlCQ8juqhQ7scAYxvTqoDsRmrM8HQDCSkDuKQcKYcpV+1Z3CVmlTjRAKACodyMPGzDKAnVV4eFuR+qv2NcNwhmGDKv2NLhL4HOP0qjNGFzrQDsRUi1jzHNNIuAVwMjfAyf7qR8ABBzKoz5haso7GBCDpZsHI1sTv6UnilLQnkQ7CGEEYb6goz64ruilrUQP//Z" alt="Curious Bear">
+        <h2 class="win-title">🎉 You're a Master Chef!</h2>
+        <p class="win-subtitle">Curious Bear is so proud of you! 🐻💛</p>
+        <div class="win-quote">
+            <p>"Great detective work, friend! We solved all the delicious mysteries together!"</p>
+        </div>
+        <button class="btn btn-green" onclick="resetGame()">Play Again 🔄</button>
+    </div>
+</div>
+
+<script>
+const dishes = [
+  {
+    name: "Pad Thai", emoji: "🍜", origin: "🇹🇭 Thailand", color: "#F39C12",
+    ingredients: ["Rice noodles", "Tamarind paste", "Peanuts", "Shrimp"],
+    images: {
+      "Rice noodles": "https://kimi-web-img.moonshot.cn/img/www.seriouseats.com/791e6472838d45fd1bd9329b25e14503350884a5.JPG",
+      "Tamarind paste": "https://kimi-web-img.moonshot.cn/img/mygoodfoodworld.com/d1ede7abd5f7f5da10d5a3b4002fb30c7e27fa04.jpg",
+      "Peanuts": "https://kimi-web-img.moonshot.cn/img/i0.wp.com/edc0c2b0fbc313fbbce1a3521b9a40ebdeb2cdfa.jpg",
+      "Shrimp": "https://kimi-web-img.moonshot.cn/img/www.gourmetfoodstore.com/5cfd36e915e8bd43022a23ad6cc91891ead11a1f.jpg"
+    },
+    fact: "Did you know? Pad Thai was promoted as Thailand's national dish during World War II to encourage rice noodle consumption!"
+  },
+  {
+    name: "Ramen", emoji: "🍜", origin: "🇯🇵 Japan", color: "#E74C3C",
+    ingredients: ["Wheat noodles", "Miso broth", "Chashu pork", "Soft-boiled egg"],
+    images: {
+      "Wheat noodles": "https://kimi-web-img.moonshot.cn/img/www.seriouseats.com/1b7570421c86009dd6ba469326e0ccbcdc64900a.jpg",
+      "Miso broth": "https://kimi-web-img.moonshot.cn/img/simple-veganista.com/e0ac83ff74f22dc087d1d7305aa7eda9330a1d60.jpg",
+      "Chashu pork": "https://kimi-web-img.moonshot.cn/img/www.chopstickchronicles.com/b96f001235f4f5359b80ce29283e898c85d105d5.jpg",
+      "Soft-boiled egg": "https://kimi-web-img.moonshot.cn/img/www.seriouseats.com/8e67037821632b55912aff890c898e836f932295.JPG"
+    },
+    fact: "Did you know? The first ramen museum opened in Yokohama in 1994, featuring a replica of 1958 Tokyo!"
+  },
+  {
+    name: "Banh Mi", emoji: "🥖", origin: "🇻🇳 Vietnam", color: "#27AE60",
+    ingredients: ["Baguette", "Pâté", "Pickled carrots & daikon", "Cilantro"],
+    images: {
+      "Baguette": "https://kimi-web-img.moonshot.cn/img/www.kroger.com/303caca98f38209f4c9ab96693c54422fa18f061",
+      "Pâté": "https://kimi-web-img.moonshot.cn/img/www.daringgourmet.com/40356b189f8c1f228472462c868eb8ec6bf4d78d.jpg",
+      "Pickled carrots & daikon": "https://kimi-web-img.moonshot.cn/img/thevietvegan.com/327e22816d0066c03e88f37a4ed850e54fd7ddbd.jpg",
+      "Cilantro": "https://kimi-web-img.moonshot.cn/img/i0.wp.com/c70a8cb99cc228c8839d1d62fb4d5f333d7bcb3e.jpg"
+    },
+    fact: "Did you know? Banh Mi is a delicious fusion of French colonial baguettes with Vietnamese flavors!"
+  },
+  {
+    name: "Dosa", emoji: "🥞", origin: "🇮🇳 India", color: "#8E44AD",
+    ingredients: ["Fermented rice batter", "Potato masala", "Coconut chutney", "Sambar"],
+    images: {
+      "Fermented rice batter": "https://kimi-web-img.moonshot.cn/img/images.getrecipekit.com/9ff62204af13c129de53092f3c38f4c384c7e803.png",
+      "Potato masala": "https://kimi-web-img.moonshot.cn/img/www.indianhealthyrecipes.com/bb0e4bfdbe9a96a9a281a37a9829b7aa906cd6b7.jpg",
+      "Coconut chutney": "https://kimi-web-img.moonshot.cn/img/www.spiceupthecurry.com/49c91b81e55dbb25871fa760e0c3cb7fa71f2822.jpg",
+      "Sambar": "https://kimi-web-img.moonshot.cn/img/cookingtheglobe.com/779cab8021e51e81f4dcf552272659dbc1a05e4d.jpg"
+    },
+    fact: "Did you know? A perfectly made dosa is so thin and crispy, you can almost see through it!"
+  },
+  {
+    name: "Bibimbap", emoji: "🥣", origin: "🇰🇷 Korea", color: "#C0392B",
+    ingredients: ["Rice", "Gochujang", "Assorted veggies", "Fried egg"],
+    images: {
+      "Rice": "https://kimi-web-img.moonshot.cn/img/myplantbasedfamily.com/360359b9d1847b77ef69e01277277b7457dbe585.png",
+      "Gochujang": "https://kimi-web-img.moonshot.cn/img/minimalistbaker.com/d3229a0e8af152e1fa8d7719f2f9d824f5ca74a9.jpg",
+      "Assorted veggies": "https://kimi-web-img.moonshot.cn/img/www.dinneratthezoo.com/4cecf1cdefa5672fc414666319acf0315e8ac4e3.jpg",
+      "Fried egg": "https://kimi-web-img.moonshot.cn/img/www.seriouseats.com/fc2e767cbf927b31dda2ed011481e7ca36b1e5dc.jpg"
+    },
+    fact: "Did you know? Bibimbap literally means 'mixed rice' and is meant to be stirred together before eating!"
+  }
+];
+
+const decoyPool = [
+  { name: "Soy sauce", image: "https://kimi-web-img.moonshot.cn/img/themalamarket.com/6b1fe786fa276f93312498e069fefd7afcd8d65a.jpg" },
+  { name: "Sesame seeds", image: "https://kimi-web-img.moonshot.cn/img/c8.alamy.com/7f3a902696b4387554047a6601439c456394e69b.jpg" },
+  { name: "Lime", image: "https://kimi-web-img.moonshot.cn/img/c8.alamy.com/ed364a628c86456a4bf503b2c0f083b23121fee0.jpg" },
+  { name: "Chili flakes", image: "https://kimi-web-img.moonshot.cn/img/www.sidechef.com/c898817bac001108a08ba1c6ce75ae8760eaaad2.jpeg" },
+  { name: "Coconut milk", image: "https://kimi-web-img.moonshot.cn/img/c8.alamy.com/9b98222bac00b0ac8689f0e54d98029ace54f3c2.jpg" }
+];
+
+const bearMessages = {
+  start: "Hi friend! Tap an ingredient, then tap a slot to place it! 🐻",
+  correct: "Yay! That's the right ingredient! Keep going! 🎉",
+  wrong: "Oops! That one doesn't belong here! Try again! 🤔",
+  complete: "Amazing! We solved this dish! Ready for the next one? 🌟",
+  win: "You did it! We're the best detective team ever! 🏆"
+};
+
+let currentDishIndex = 0;
+let currentDishCorrect = [];
+let selectedIngredient = null;
+
+function shuffle(array) {
+  const arr = [...array];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function setBearMessage(key) {
+  const msgEl = document.getElementById('bear-message');
+  msgEl.textContent = bearMessages[key] || bearMessages.start;
+  msgEl.parentElement.style.animation = 'popIn 0.4s ease';
+  setTimeout(() => { msgEl.parentElement.style.animation = ''; }, 400);
+}
+
+function initGame() {
+  currentDishIndex = 0;
+  currentDishCorrect = [];
+  selectedIngredient = null;
+  document.getElementById('win-screen').style.display = 'none';
+  document.getElementById('dish-area').style.display = 'flex';
+  document.querySelector('.pantry-container').style.display = 'block';
+  document.querySelector('.instructions').style.display = 'block';
+  document.getElementById('message-area').style.display = 'block';
+  document.getElementById('bear-speech').style.display = 'block';
+  setBearMessage('start');
+  loadDish(0);
+}
+
+function loadDish(index) {
+  currentDishIndex = index;
+  currentDishCorrect = [];
+  selectedIngredient = null;
+  const dish = dishes[index];
+
+  document.getElementById('score-board').textContent = `⭐ Dish ${index + 1} of 5`;
+  document.getElementById('dish-emoji').textContent = dish.emoji;
+  document.getElementById('dish-name').textContent = dish.name;
+  document.getElementById('dish-name').style.color = dish.color;
+  document.getElementById('dish-origin').textContent = dish.origin;
+  document.getElementById('dish-status').textContent = '';
+
+  const slots = document.querySelectorAll('.slot');
+  slots.forEach(slot => {
+    slot.innerHTML = '<span style="color:#bbb;font-size:11px">?</span>';
+    slot.style.background = '#f8f8f8';
+    slot.style.border = '2px dashed #ccc';
+    slot.classList.remove('correct', 'highlight');
+    slot.dataset.filled = 'false';
+  });
+
+  const dishCard = document.getElementById('current-dish');
+  dishCard.style.border = '3px dashed #ddd';
+  dishCard.style.background = 'white';
+
+  const pantry = document.getElementById('pantry');
+  pantry.innerHTML = '';
+
+  let allItems = [];
+  dish.ingredients.forEach(ing => {
+    allItems.push({ name: ing, image: dish.images[ing], correct: true });
+  });
+
+  const randomDecoy = decoyPool[Math.floor(Math.random() * decoyPool.length)];
+  allItems.push({ name: randomDecoy.name, image: randomDecoy.image, correct: false });
+
+  allItems = shuffle(allItems);
+
+  allItems.forEach(item => {
+    const itemEl = document.createElement('div');
+    itemEl.className = 'ingredient-item';
+    itemEl.dataset.name = item.name;
+    itemEl.dataset.correct = item.correct;
+    itemEl.innerHTML = `
+      <img src="${item.image}" alt="${item.name}" onerror="this.style.display='none'">
+      <div class="ingredient-name">${item.name}</div>
+    `;
+    itemEl.addEventListener('click', () => selectIngredient(itemEl));
+    pantry.appendChild(itemEl);
+  });
+}
+
+function selectIngredient(el) {
+  // Deselect previous
+  document.querySelectorAll('.ingredient-item').forEach(item => item.classList.remove('selected'));
+
+  // If clicking same item, deselect it
+  if (selectedIngredient === el) {
+    selectedIngredient = null;
+    clearSlotHighlights();
+    return;
+  }
+
+  // Select new
+  selectedIngredient = el;
+  el.classList.add('selected');
+
+  // Highlight empty slots
+  highlightEmptySlots();
+
+  // Also allow direct slot click
+  setupSlotClick();
+}
+
+function highlightEmptySlots() {
+  document.querySelectorAll('.slot').forEach(slot => {
+    if (slot.dataset.filled !== 'true') {
+      slot.classList.add('highlight');
+    }
+  });
+}
+
+function clearSlotHighlights() {
+  document.querySelectorAll('.slot').forEach(slot => slot.classList.remove('highlight'));
+}
+
+function setupSlotClick() {
+  document.querySelectorAll('.slot').forEach(slot => {
+    // Remove old listeners to prevent duplicates
+    const newSlot = slot.cloneNode(true);
+    slot.parentNode.replaceChild(newSlot, slot);
+
+    newSlot.addEventListener('click', function() {
+      if (this.dataset.filled === 'true' || !selectedIngredient) return;
+
+      const ingredientName = selectedIngredient.dataset.name;
+      const dish = dishes[currentDishIndex];
+      const belongsToCurrent = dish.ingredients.includes(ingredientName);
+
+      if (belongsToCurrent && !currentDishCorrect.includes(ingredientName)) {
+        // Correct!
+        currentDishCorrect.push(ingredientName);
+
+        this.innerHTML = `
+          <img src="${dish.images[ingredientName]}" style="width:55px;height:45px;object-fit:cover;border-radius:5px;margin-bottom:2px;" onerror="this.style.display='none'">
+          <div style="font-size:10px;color:#27AE60;font-weight:bold;">${ingredientName}</div>
+        `;
+        this.classList.add('correct');
+        this.classList.remove('highlight');
+        this.dataset.filled = 'true';
+
+        selectedIngredient.classList.add('used');
+        selectedIngredient.classList.remove('selected');
+        selectedIngredient = null;
+        clearSlotHighlights();
+
+        showMessage("Correct! 🎉", "#27AE60");
+        setBearMessage('correct');
+
+        if (currentDishCorrect.length === 4) {
+          const dishCard = document.getElementById('current-dish');
+          dishCard.style.border = `3px solid ${dish.color}`;
+          dishCard.style.background = '#F0FFF4';
+          document.getElementById('dish-status').textContent = '✅';
+
+          setTimeout(() => {
+            setBearMessage('complete');
+            showFact(dish);
+          }, 500);
+        }
+      } else {
+        // Wrong!
+        showMessage("Oops! That's not right! 😅", "#E74C3C");
+        setBearMessage('wrong');
+
+        const dishCard = document.getElementById('current-dish');
+        dishCard.style.animation = 'shake 0.5s';
+        setTimeout(() => { dishCard.style.animation = ''; }, 500);
+
+        selectedIngredient.classList.remove('selected');
+        selectedIngredient = null;
+        clearSlotHighlights();
+      }
+    });
+  });
+}
+
+function showMessage(text, color) {
+  const msgArea = document.getElementById('message-area');
+  msgArea.textContent = text;
+  msgArea.style.color = color;
+  msgArea.style.animation = 'fadeIn 0.3s';
+  setTimeout(() => { msgArea.textContent = ''; }, 2000);
+}
+
+function showFact(dish) {
+  document.getElementById('fact-emoji').textContent = dish.emoji;
+  document.getElementById('fact-title').textContent = `${dish.origin} ${dish.name} Unlocked!`;
+  document.getElementById('fact-text').textContent = dish.fact;
+
+  const nextBtn = document.getElementById('next-btn');
+  if (currentDishIndex >= dishes.length - 1) {
+    nextBtn.textContent = 'See Results! 🏆';
+    nextBtn.onclick = showWinScreen;
+  } else {
+    nextBtn.textContent = 'Next Dish! 🍴';
+    nextBtn.onclick = nextDish;
+  }
+
+  document.getElementById('fact-popup').style.display = 'block';
+  document.getElementById('overlay').style.display = 'block';
+}
+
+function nextDish() {
+  document.getElementById('fact-popup').style.display = 'none';
+  document.getElementById('overlay').style.display = 'none';
+  setBearMessage('start');
+  loadDish(currentDishIndex + 1);
+}
+
+function showWinScreen() {
+  document.getElementById('fact-popup').style.display = 'none';
+  document.getElementById('overlay').style.display = 'none';
+  document.getElementById('dish-area').style.display = 'none';
+  document.querySelector('.pantry-container').style.display = 'none';
+  document.querySelector('.instructions').style.display = 'none';
+  document.getElementById('message-area').style.display = 'none';
+  document.getElementById('bear-speech').style.display = 'none';
+  document.getElementById('win-screen').style.display = 'block';
+}
+
+function resetGame() {
+  document.getElementById('message-area').style.display = 'block';
+  document.getElementById('bear-speech').style.display = 'block';
+  initGame();
+}
+
+// Initialize
+initGame();
+</script>
+
+</body>
+</html>
